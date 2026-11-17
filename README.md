@@ -52,7 +52,11 @@ new modul ntg/
 
 Buka terminal pada folder proyek:
 ```bash
-cd "C:\Kuliah Edo\sem 7 (magang)\new modul ntg"
+cd "C:\BMIS"
+```
+Instalasi Depedency:
+```bash
+npm install
 ```
 
 Jalankan dev server Vite:
