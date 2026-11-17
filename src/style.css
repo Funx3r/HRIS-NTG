@@ -1,0 +1,270 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bmis-bg: #F8F9FA;
+  --bmis-surface: #FFFFFF;
+  --bmis-surface-muted: #F3F4F6;
+  --bmis-border: #E2E8F0;
+  --bmis-text: #0F172A;
+  --bmis-body: #46464D;
+  --bmis-muted: #64748B;
+  --bmis-disabled: #94A3B8;
+
+  --bmis-primary: #0058BE;
+  --bmis-primary-hover: #004BA3;
+  --bmis-primary-pressed: #003E87;
+  --bmis-cyan: #27AFCD;
+  --bmis-teal: #279FAA;
+  --bmis-sky: #0284C7;
+  --bmis-blue-container: #D8E2FF;
+  --bmis-on-blue-container: #001A42;
+
+  --bmis-success: #10B981;
+  --bmis-success-text: #047857;
+  --bmis-warning: #F59E0B;
+  --bmis-error: #EF4444;
+  --bmis-error-text: #BA1A1A;
+  --bmis-accent: #FFCC00;
+
+  --bmis-card: var(--bmis-surface);
+  --bmis-blue: var(--bmis-primary);
+  --bmis-blue-hover: var(--bmis-primary-hover);
+  --bmis-blue-light: var(--bmis-blue-container);
+  --bmis-green: var(--bmis-success);
+  --bmis-green-hover: var(--bmis-success-text);
+  --bmis-green-light: #ECFDF5;
+  --bmis-teal-hover: #1F8791;
+  --bmis-teal-light: #E6F6F3;
+  --bmis-teal-border: #BCE6DC;
+  --bmis-yellow: var(--bmis-warning);
+  --bmis-yellow-light: #FEF3C7;
+  --bmis-red: var(--bmis-error);
+  --bmis-red-light: #FEE2E2;
+  --bmis-label: var(--bmis-body);
+  --bmis-table-header: var(--bmis-border);
+  --bmis-purple: #7C5CB4;
+  --bmis-purple-light: #EEE7F8;
+
+  --shift-p: #e9a23b;
+  --shift-p-bg: #fcefd9;
+  --shift-s: #4c7fd6;
+  --shift-s-bg: #e4ecfb;
+  --shift-m: #7c5cb4;
+  --shift-m-bg: #eee7f8;
+
+  --badge-eng: #c1622a;
+  --badge-eng-bg: #fbe4d6;
+  --badge-sec: #545e6e;
+  --badge-sec-bg: #e4e7ec;
+  --badge-hk: #2f9e8f;
+  --badge-hk-bg: #ddf3ef;
+  --badge-man: #8b4f72;
+  --badge-man-bg: #f2e2eb;
+}
+
+body {
+  margin: 0;
+  font-family: 'Hanken Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bmis-bg);
+  color: var(--bmis-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── TIPOGRAFI & GAYA DASAR BMIS ── */
+.page-heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--bmis-text);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--bmis-text);
+}
+
+.widget-sub-desc {
+  font-size: 14px;
+  color: var(--bmis-muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* ── KARTU WIDGET BMIS ── */
+.bmis-widget-card {
+  background: var(--bmis-surface);
+  border-radius: 16px;
+  border: 1px solid var(--bmis-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+/* ── KONTROL FORM & DROPDOWN ── */
+.form-select-custom,
+.form-input-custom {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--bmis-border);
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--bmis-text);
+  background-color: var(--bmis-surface);
+  outline: none;
+  transition: all 0.15s ease-in-out;
+}
+
+.form-select-custom:focus,
+.form-input-custom:focus {
+  border-color: var(--bmis-primary);
+  box-shadow: 0 0 0 3px rgba(0, 88, 190, 0.15);
+}
+
+.form-label-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bmis-body);
+  margin-bottom: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.required-tag {
+  color: var(--bmis-error-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ── TOMBOL STANDAR BMIS ── */
+.btn-bmis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  white-space: nowrap;
+}
+
+.btn-bmis-yellow {
+  background: var(--bmis-yellow);
+  color: var(--bmis-text);
+}
+.btn-bmis-yellow:hover {
+  filter: brightness(0.95);
+}
+
+.btn-bmis-purple {
+  background: var(--bmis-purple);
+  color: #ffffff;
+}
+.btn-bmis-purple:hover {
+  filter: brightness(0.95);
+}
+
+.btn-bmis-blue {
+  background: var(--bmis-primary);
+  color: #ffffff;
+}
+.btn-bmis-blue:hover {
+  background: var(--bmis-primary-hover);
+}
+
+.btn-bmis-green {
+  background: var(--bmis-green);
+  color: #ffffff;
+}
+.btn-bmis-green:hover {
+  background: var(--bmis-green-hover);
+}
+
+.btn-bmis-teal {
+  background: var(--bmis-teal);
+  color: #ffffff;
+}
+.btn-bmis-teal:hover {
+  background: var(--bmis-teal-hover);
+}
+
+.btn-bmis-red {
+  background: var(--bmis-red);
+  color: #ffffff;
+}
+.btn-bmis-red:hover {
+  background: var(--bmis-error-text);
+}
+
+/* ── BADGE DIVISI ── */
+.badge-divisi {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.badge-eng {
+  background: var(--badge-eng-bg);
+  color: var(--badge-eng);
+}
+
+.badge-sec {
+  background: var(--badge-sec-bg);
+  color: var(--badge-sec);
+}
+
+.badge-hk {
+  background: var(--badge-hk-bg);
+  color: var(--badge-hk);
+}
+
+.badge-man {
+  background: var(--badge-man-bg);
+  color: var(--badge-man);
+}
+
+/* ── LEGENDA SHIFT BULAT / KOTAK ── */
+.dot-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.dot-pagi {
+  background: var(--shift-p-bg);
+  color: var(--shift-p);
+  border: 1px solid #f3d4a4;
+}
+
+.dot-siang {
+  background: var(--shift-s-bg);
+  color: var(--shift-s);
+  border: 1px solid #bfd3f6;
+}
+
+.dot-malam {
+  background: var(--shift-m-bg);
+  color: var(--shift-m);
+  border: 1px solid #d5c4ef;
+}
