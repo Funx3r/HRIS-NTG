@@ -136,6 +136,24 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../pages/overtime/Overtime.vue'),
     meta: { breadcrumbParent: 'Lembur', breadcrumb: 'Monitoring Lembur' },
   },
+  // Modul Payroll (Khusus Admin)
+  {
+    path: '/payroll',
+    redirect: '/payroll/komponen',
+    meta: { requiresAdmin: true },
+  },
+  {
+    path: '/payroll/komponen',
+    name: 'KomponenGaji',
+    component: () => import('../pages/payroll/KomponenGaji.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Komponen Gaji' },
+  },
+  {
+    path: '/payroll/grade',
+    name: 'GradePegawai',
+    component: () => import('../pages/payroll/GradePegawai.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Grade Pegawai' },
+  },
 ];
 
 const router = createRouter({

@@ -9,12 +9,16 @@ import {
   CalendarCheck,
   ChevronDown,
   UserCheck,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Wallet,
+  Layers,
+  Award
 } from 'lucide-vue-next';
 
 const route = useRoute();
 const isRosterOpen = ref(true);
 const isAttendanceOpen = ref(true);
+const isPayrollOpen = ref(true);
 
 const currentRole = ref('admin');
 
@@ -209,6 +213,45 @@ const subItemClass = (active: boolean) =>
         <Clock :size="18" />
         <span>Monitor Lembur</span>
       </router-link>
+
+      <!-- Pengaturan Payroll (Admin: Accordion Dropdown) -->
+      <div v-if="isSuperAdmin">
+        <button
+          type="button"
+          @click="isPayrollOpen = !isPayrollOpen"
+          :class="[navItemClass(isSubActive('/payroll')), 'w-full justify-between cursor-pointer']"
+          :aria-current="isSubActive('/payroll') ? 'page' : undefined"
+          :aria-expanded="isPayrollOpen"
+        >
+          <div class="flex items-center gap-3">
+            <Wallet :size="18" />
+            <span>Pengaturan Payroll</span>
+          </div>
+          <ChevronDown
+            :size="16"
+            :class="['transition-transform duration-200', isPayrollOpen ? 'rotate-180' : '']"
+          />
+        </button>
+
+        <div v-show="isPayrollOpen" class="pl-9 pr-2 py-1 space-y-1">
+          <router-link
+            to="/payroll/komponen"
+            :class="subItemClass(isActive('/payroll/komponen'))"
+            :aria-current="isActive('/payroll/komponen') ? 'page' : undefined"
+          >
+            <Layers :size="14" />
+            <span>Komponen Gaji</span>
+          </router-link>
+          <router-link
+            to="/payroll/grade"
+            :class="subItemClass(isActive('/payroll/grade'))"
+            :aria-current="isActive('/payroll/grade') ? 'page' : undefined"
+          >
+            <Award :size="14" />
+            <span>Grade Pegawai</span>
+          </router-link>
+        </div>
+      </div>
     </nav>
 
     <!-- Footer Sidebar -->
