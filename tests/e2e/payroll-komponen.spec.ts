@@ -44,15 +44,15 @@ test('search filter works on kode or nama', async ({ page }) => {
   await expect(page.getByText('Menampilkan 1 dari 1 entri')).toBeVisible();
 });
 
-test('tambah button opens development stub modal', async ({ page }) => {
+test('tambah button navigates to form page and can cancel back to list', async ({ page }) => {
   await loginAs(page, 'admin');
   await page.goto('/payroll/komponen');
 
   await page.getByRole('button', { name: 'Tambah Komponen' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByText('Form Tambah Komponen Gaji')).toBeVisible();
+  await expect(page).toHaveURL(/\/payroll\/komponen\/tambah$/);
+  await expect(page.getByRole('heading', { name: 'Tambah Komponen Gaji' })).toBeVisible();
 
-  // Tutup modal
-  await page.getByRole('button', { name: 'Tutup' }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // Batal kembali ke tabel
+  await page.getByRole('button', { name: 'Batal' }).click();
+  await expect(page).toHaveURL(/\/payroll\/komponen$/);
 });

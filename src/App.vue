@@ -3,12 +3,15 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Sidebar from './components/layout/Sidebar.vue';
 import Navbar from './components/layout/Navbar.vue';
+import ToastViewport from './components/payroll/ToastViewport.vue';
 
 const route = useRoute();
 const isAuthPage = computed(() => route.meta.public === true);
 </script>
 
 <template>
+  <ToastViewport />
+
   <!-- Full Screen Auth Pages -->
   <div v-if="isAuthPage" class="min-h-screen w-full bg-bmis-bg">
     <router-view />

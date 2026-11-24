@@ -149,10 +149,52 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Komponen Gaji' },
   },
   {
+    path: '/payroll/komponen/tambah',
+    name: 'KomponenGajiTambah',
+    component: () => import('../pages/payroll/KomponenGajiForm.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Tambah Komponen Gaji' },
+  },
+  {
+    path: '/payroll/komponen/:kode/ubah',
+    name: 'KomponenGajiUbah',
+    component: () => import('../pages/payroll/KomponenGajiForm.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Ubah Komponen Gaji' },
+  },
+  {
     path: '/payroll/grade',
     name: 'GradePegawai',
     component: () => import('../pages/payroll/GradePegawai.vue'),
     meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Grade Pegawai' },
+  },
+  {
+    path: '/payroll/grade/tambah',
+    name: 'GradePegawaiTambah',
+    component: () => import('../pages/payroll/GradePegawaiForm.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Tambah Grade Pegawai' },
+  },
+  {
+    path: '/payroll/grade/:kode/ubah',
+    name: 'GradePegawaiUbah',
+    component: () => import('../pages/payroll/GradePegawaiForm.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Ubah Grade Pegawai' },
+  },
+  {
+    path: '/payroll/eselon',
+    name: 'EselonJabatan',
+    component: () => import('../pages/payroll/EselonJabatan.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Eselon / Level Jabatan' },
+  },
+  {
+    path: '/payroll/eselon/tambah',
+    name: 'EselonJabatanTambah',
+    component: () => import('../pages/payroll/EselonJabatanForm.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Tambah Eselon' },
+  },
+  {
+    path: '/payroll/eselon/:kode/ubah',
+    name: 'EselonJabatanUbah',
+    component: () => import('../pages/payroll/EselonJabatanForm.vue'),
+    meta: { requiresAdmin: true, breadcrumbParent: 'Payroll', breadcrumb: 'Ubah Eselon' },
   },
 ];
 

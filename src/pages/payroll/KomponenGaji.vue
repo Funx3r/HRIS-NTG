@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   Layers,
   PlusCircle,
@@ -7,77 +8,41 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  MoreVertical,
-  X
+  Pencil,
+  Trash2,
 } from 'lucide-vue-next';
+import { useKomponenGajiStore } from '../../composables/useKomponenGajiStore';
+import { useToast } from '../../composables/useToast';
+import ConfirmDialog from '../../components/payroll/ConfirmDialog.vue';
+import type { KomponenGaji } from '../../types/payroll';
 
-interface KomponenItem {
-  kode: string;
-  nama: string;
-  tipe: 'Penghasilan' | 'Beban Perusahaan' | 'Potongan';
-  sifat: 'Tetap' | 'Sementara';
-  metode: string;
-  kenaPajak: boolean;
-}
-
-const rawItems: KomponenItem[] = [
-  {
-    kode: 'GAJPOK',
-    nama: 'Gaji Pokok',
-    tipe: 'Penghasilan',
-    sifat: 'Tetap',
-    metode: 'Nominal Tetap',
-    kenaPajak: true,
-  },
-  {
-    kode: 'TJ_JABATAN',
-    nama: 'Tunjangan Jabatan',
-    tipe: 'Penghasilan',
-    sifat: 'Tetap',
-    metode: 'Nominal Tetap',
-    kenaPajak: true,
-  },
-  {
-    kode: 'UANG_MAKAN',
-    nama: 'Uang Makan',
-    tipe: 'Penghasilan',
-    sifat: 'Sementara',
-    metode: 'Per Hari',
-    kenaPajak: false,
-  },
-  {
-    kode: 'BPJS_KES_PRS',
-    nama: 'Iuran BPJS Kesehatan Perusahaan',
-    tipe: 'Beban Perusahaan',
-    sifat: 'Tetap',
-    metode: 'Persentase',
-    kenaPajak: false,
-  },
-  {
-    kode: 'KASBON',
-    nama: 'Kasbon',
-    tipe: 'Potongan',
-    sifat: 'Sementara',
-    metode: 'Input',
-    kenaPajak: false,
-  },
-];
+const router = useRouter();
+const { items, loading, load, deactivate } = useKomponenGajiStore();
+const { showToast } = useToast();
 
 const searchQuery = ref('');
 const tipeFilter = ref<'ALL' | 'Penghasilan' | 'Beban Perusahaan' | 'Potongan'>('ALL');
+const statusFilter = ref<'ALL' | 'Aktif' | 'Nonaktif'>('ALL');
 const currentPage = ref(1);
 const perPage = 10;
-const isModalOpen = ref(false);
+
+const isDeactivateOpen = ref(false);
+const itemToDeactivate = ref<KomponenGaji | null>(null);
+
+onMounted(() => {
+  load();
+});
 
 const filteredList = computed(() => {
   const q = searchQuery.value.toLowerCase().trim();
-  return rawItems.filter((item) => {
+  return (items.value || []).filter((item) => {
     const matchSearch =
       !q ||
       item.kode.toLowerCase().includes(q) ||
       item.nama.toLowerCase().includes(q);
     const matchTipe = tipeFilter.value === 'ALL' || item.tipe === tipeFilter.value;
-    return matchSearch && matchTipe;
+    const matchStatus = statusFilter.value === 'ALL' || item.status === statusFilter.value;
+    return matchSearch && matchTipe && matchStatus;
   });
 });
 
@@ -88,9 +53,22 @@ const paginatedList = computed(() => {
   return filteredList.value.slice(start, start + perPage);
 });
 
-watch([searchQuery, tipeFilter], () => {
+watch([searchQuery, tipeFilter, statusFilter], () => {
   currentPage.value = 1;
 });
+
+const openDeactivate = (item: KomponenGaji) => {
+  itemToDeactivate.value = item;
+  isDeactivateOpen.value = true;
+};
+
+const confirmDeactivate = async () => {
+  if (!itemToDeactivate.value) return;
+  const kode = itemToDeactivate.value.kode;
+  await deactivate(kode);
+  isDeactivateOpen.value = false;
+  showToast(`${kode} berhasil dinonaktifkan.`, 'info');
+};
 </script>
 
 <template>
@@ -115,7 +93,7 @@ watch([searchQuery, tipeFilter], () => {
       <div class="flex items-center gap-2">
         <button
           type="button"
-          @click="isModalOpen = true"
+          @click="router.push('/payroll/komponen/tambah')"
           class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#0058BE] hover:bg-[#004ba3] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
         >
           <PlusCircle :size="14" />
@@ -136,7 +114,7 @@ watch([searchQuery, tipeFilter], () => {
             <div class="flex items-center gap-2">
               <h2 class="text-sm font-bold text-slate-800">Daftar Komponen Gaji</h2>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                5 Komponen Terkonfigurasi
+                {{ items.length }} Komponen Terkonfigurasi
               </span>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Komponen dasar penghitungan payroll seluruh tingkatan.</p>
@@ -173,6 +151,16 @@ watch([searchQuery, tipeFilter], () => {
             <option value="Beban Perusahaan">Beban Perusahaan</option>
             <option value="Potongan">Potongan</option>
           </select>
+
+          <!-- Status Filter Dropdown -->
+          <select
+            v-model="statusFilter"
+            class="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#0058BE] text-slate-700 cursor-pointer"
+          >
+            <option value="ALL">Semua Status</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Nonaktif">Nonaktif</option>
+          </select>
         </div>
 
         <span class="text-xs text-slate-500 font-medium">
@@ -191,11 +179,19 @@ watch([searchQuery, tipeFilter], () => {
               <th class="px-5 py-3">SIFAT</th>
               <th class="px-5 py-3">METODE HITUNG</th>
               <th class="px-5 py-3">KENA PAJAK</th>
-              <th class="px-5 py-3 text-right">AKSI</th>
+              <th class="px-5 py-3">STATUS</th>
+              <th class="px-5 py-3 text-right w-24">AKSI</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
+            <tr v-if="loading">
+              <td colspan="8" class="px-5 py-8 text-center text-slate-400">
+                Memuat data komponen gaji...
+              </td>
+            </tr>
+
             <tr
+              v-else
               v-for="item in paginatedList"
               :key="item.kode"
               class="hover:bg-slate-50/80 transition-colors"
@@ -238,29 +234,59 @@ watch([searchQuery, tipeFilter], () => {
                   class="inline-flex items-center gap-1.5 text-slate-700 font-medium"
                 >
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  Ya (Objek PPh 21)
+                  Ya
                 </span>
                 <span
                   v-else
                   class="inline-flex items-center gap-1.5 text-slate-500"
                 >
                   <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                  Bukan Objek
+                  Tidak
                 </span>
               </td>
-              <td class="px-5 py-3.5 text-right">
-                <button
-                  type="button"
-                  class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                  aria-label="Aksi"
+              <td class="px-5 py-3.5">
+                <span
+                  v-if="item.status === 'Aktif'"
+                  class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
                 >
-                  <MoreVertical :size="15" />
-                </button>
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Aktif
+                </span>
+                <span
+                  v-else
+                  class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                  Nonaktif
+                </span>
+              </td>
+              <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    @click="router.push(`/payroll/komponen/${item.kode}/ubah`)"
+                    class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    :aria-label="`Ubah Komponen Gaji ${item.kode}`"
+                  >
+                    <Pencil :size="15" />
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="item.status === 'Nonaktif'"
+                    :title="item.status === 'Nonaktif' ? 'Sudah nonaktif' : undefined"
+                    @click="openDeactivate(item)"
+                    class="p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    :class="item.status === 'Nonaktif' ? 'text-slate-300' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'"
+                    :aria-label="`Nonaktifkan Komponen Gaji ${item.kode}`"
+                  >
+                    <Trash2 :size="15" />
+                  </button>
+                </div>
               </td>
             </tr>
 
-            <tr v-if="paginatedList.length === 0">
-              <td colspan="7" class="px-5 py-8 text-center text-slate-400">
+            <tr v-if="!loading && paginatedList.length === 0">
+              <td colspan="8" class="px-5 py-8 text-center text-slate-400">
                 Tidak ada data komponen gaji yang sesuai dengan filter.
               </td>
             </tr>
@@ -294,43 +320,16 @@ watch([searchQuery, tipeFilter], () => {
       </div>
     </div>
 
-    <!-- Stub Modal: Tambah Komponen -->
-    <div
-      v-if="isModalOpen"
-      role="dialog"
-      aria-modal="true"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
-    >
-      <div class="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden p-6 space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-          <h3 class="text-sm font-bold text-slate-800">Form Tambah Komponen Gaji</h3>
-          <button
-            type="button"
-            @click="isModalOpen = false"
-            class="text-slate-400 hover:text-slate-600 rounded-md p-1"
-            aria-label="Close"
-          >
-            <X :size="16" />
-          </button>
-        </div>
-
-        <div class="text-xs text-slate-600 space-y-2 py-2">
-          <p class="font-medium text-slate-700">Fitur form sedang dalam pengembangan (tahap setup visual).</p>
-          <p class="text-slate-500">
-            Di tahap berikutnya form ini akan menghubungkan kode, nama, tipe penghasilan, sifat, dan ketentuan tarif pajak PPh 21 TER secara langsung.
-          </p>
-        </div>
-
-        <div class="pt-2 flex justify-end">
-          <button
-            type="button"
-            @click="isModalOpen = false"
-            class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Tutup
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Confirm Dialog: Deactivate Komponen -->
+    <ConfirmDialog
+      :is-open="isDeactivateOpen"
+      title="Nonaktifkan Komponen Gaji?"
+      :message="`Nonaktifkan ${itemToDeactivate?.kode}? Data historis tetap tersimpan.`"
+      confirm-text="Nonaktifkan"
+      cancel-text="Batal"
+      :danger="true"
+      @confirm="confirmDeactivate"
+      @cancel="isDeactivateOpen = false"
+    />
   </div>
 </template>

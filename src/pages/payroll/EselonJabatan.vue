@@ -1,0 +1,310 @@
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import {
+  Network,
+  PlusCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Trash2,
+} from 'lucide-vue-next';
+import { useEselonStore } from '../../composables/useEselonStore';
+import { useToast } from '../../composables/useToast';
+import ConfirmDialog from '../../components/payroll/ConfirmDialog.vue';
+import type { EselonJabatan } from '../../types/payroll';
+
+const router = useRouter();
+const { items, loading, load, deactivate } = useEselonStore();
+const { showToast } = useToast();
+
+const searchQuery = ref('');
+const kategoriFilter = ref<'ALL' | 'Struktural' | 'Fungsional' | 'Non-Eselon'>('ALL');
+const statusFilter = ref<'ALL' | 'Aktif' | 'Nonaktif'>('ALL');
+const currentPage = ref(1);
+const perPage = 10;
+
+const isDeactivateOpen = ref(false);
+const itemToDeactivate = ref<EselonJabatan | null>(null);
+
+onMounted(() => {
+  load();
+});
+
+const filteredList = computed(() => {
+  const q = searchQuery.value.toLowerCase().trim();
+  return (items.value || []).filter((item) => {
+    const matchSearch =
+      !q ||
+      item.kode.toLowerCase().includes(q) ||
+      item.nama.toLowerCase().includes(q);
+    const matchKategori = kategoriFilter.value === 'ALL' || item.kategori === kategoriFilter.value;
+    const matchStatus = statusFilter.value === 'ALL' || item.status === statusFilter.value;
+    return matchSearch && matchKategori && matchStatus;
+  });
+});
+
+const totalPages = computed(() => Math.ceil(filteredList.value.length / perPage) || 1);
+
+const paginatedList = computed(() => {
+  const start = (currentPage.value - 1) * perPage;
+  return filteredList.value.slice(start, start + perPage);
+});
+
+watch([searchQuery, kategoriFilter, statusFilter], () => {
+  currentPage.value = 1;
+});
+
+const openDeactivate = (item: EselonJabatan) => {
+  itemToDeactivate.value = item;
+  isDeactivateOpen.value = true;
+};
+
+const confirmDeactivate = async () => {
+  if (!itemToDeactivate.value) return;
+  const kode = itemToDeactivate.value.kode;
+  await deactivate(kode);
+  isDeactivateOpen.value = false;
+  showToast(`${kode} berhasil dinonaktifkan.`, 'info');
+};
+</script>
+
+<template>
+  <div class="space-y-6">
+    <!-- Breadcrumb & Page Header -->
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <nav class="flex items-center gap-1.5 text-xs text-slate-500 mb-1" aria-label="Breadcrumb Halaman">
+          <router-link to="/payroll/komponen" class="hover:text-bmis-primary transition-colors">Payroll</router-link>
+          <span class="text-slate-300">&gt;</span>
+          <span class="text-bmis-primary font-semibold">Eselon / Level Jabatan</span>
+        </nav>
+        <span class="inline-block text-[11px] font-bold text-slate-400 tracking-wider mb-1 uppercase">
+          LANGKAH 3 DARI 16 • SETUP MASTER GAJI
+        </span>
+        <h1 class="text-2xl font-bold text-[#171C1F] tracking-tight mb-1">Eselon / Level Jabatan</h1>
+        <p class="text-slate-500 text-xs mb-0">
+          Level pekerjaan pegawai dan acuan hierarki jabatan.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          @click="router.push('/payroll/eselon/tambah')"
+          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#0058BE] hover:bg-[#004ba3] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+        >
+          <PlusCircle :size="14" />
+          <span>Tambah Eselon</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Table Card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      <!-- Card Header -->
+      <div class="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-white">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0058BE]">
+            <Network :size="18" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-slate-800">Daftar Eselon / Level Jabatan</h2>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                {{ items.length }} Level Terkonfigurasi
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Acuan urutan jabatan untuk pemetaan tunjangan.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar: Search, Filter, Counter -->
+      <div class="px-5 py-3.5 bg-slate-50/70 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3 flex-1">
+          <!-- Search Input -->
+          <div class="relative min-w-[240px] max-w-sm flex-1">
+            <Search :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Cari kode atau nama level jabatan..."
+              class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#0058BE] transition-colors"
+            />
+          </div>
+
+          <!-- Kategori Filter Dropdown -->
+          <select
+            v-model="kategoriFilter"
+            class="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#0058BE] text-slate-700 cursor-pointer"
+          >
+            <option value="ALL">Semua Kategori</option>
+            <option value="Struktural">Struktural</option>
+            <option value="Fungsional">Fungsional</option>
+            <option value="Non-Eselon">Non-Eselon</option>
+          </select>
+
+          <!-- Status Filter Dropdown -->
+          <select
+            v-model="statusFilter"
+            class="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-[#0058BE] text-slate-700 cursor-pointer"
+          >
+            <option value="ALL">Semua Status</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Nonaktif">Nonaktif</option>
+          </select>
+        </div>
+
+        <span class="text-xs text-slate-500 font-medium">
+          Menampilkan {{ paginatedList.length }} dari {{ filteredList.length }} entri
+        </span>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-50 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200 text-[11px]">
+              <th class="px-5 py-3">KODE</th>
+              <th class="px-5 py-3">NAMA</th>
+              <th class="px-5 py-3 text-center">URUTAN</th>
+              <th class="px-5 py-3">KATEGORI</th>
+              <th class="px-5 py-3">STATUS</th>
+              <th class="px-5 py-3 text-right w-24">AKSI</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr v-if="loading">
+              <td colspan="6" class="px-5 py-8 text-center text-slate-400">
+                Memuat data eselon...
+              </td>
+            </tr>
+
+            <tr
+              v-else
+              v-for="item in paginatedList"
+              :key="item.kode"
+              class="hover:bg-slate-50/80 transition-colors"
+            >
+              <td class="px-5 py-3.5 font-mono font-semibold text-slate-800">
+                {{ item.kode }}
+              </td>
+              <td class="px-5 py-3.5 font-medium text-slate-900">
+                {{ item.nama }}
+              </td>
+              <td class="px-5 py-3.5 text-center">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded-md bg-slate-100 text-slate-700 font-semibold text-xs">
+                  {{ item.urutan }}
+                </span>
+              </td>
+              <td class="px-5 py-3.5">
+                <span
+                  v-if="item.kategori === 'Struktural'"
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-[#0058BE] border border-blue-200"
+                >
+                  Struktural
+                </span>
+                <span
+                  v-else-if="item.kategori === 'Fungsional'"
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                >
+                  Fungsional
+                </span>
+                <span
+                  v-else
+                  class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200"
+                >
+                  Non-Eselon
+                </span>
+              </td>
+              <td class="px-5 py-3.5">
+                <span
+                  v-if="item.status === 'Aktif'"
+                  class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Aktif
+                </span>
+                <span
+                  v-else
+                  class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                  Nonaktif
+                </span>
+              </td>
+              <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    @click="router.push(`/payroll/eselon/${item.kode}/ubah`)"
+                    class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    :aria-label="`Ubah Eselon ${item.kode}`"
+                  >
+                    <Pencil :size="15" />
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="item.status === 'Nonaktif'"
+                    :title="item.status === 'Nonaktif' ? 'Sudah nonaktif' : undefined"
+                    @click="openDeactivate(item)"
+                    class="p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    :class="item.status === 'Nonaktif' ? 'text-slate-300' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'"
+                    :aria-label="`Nonaktifkan Eselon ${item.kode}`"
+                  >
+                    <Trash2 :size="15" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <tr v-if="!loading && paginatedList.length === 0">
+              <td colspan="6" class="px-5 py-8 text-center text-slate-400">
+                Tidak ada data eselon yang sesuai dengan filter.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="px-5 py-3.5 border-t border-slate-100 bg-white flex items-center justify-between text-xs text-slate-500">
+        <span>Halaman {{ currentPage }} dari {{ totalPages }}</span>
+        <div class="flex items-center gap-1">
+          <button
+            type="button"
+            :disabled="currentPage === 1"
+            @click="currentPage--"
+            class="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 transition-colors"
+          >
+            <ChevronLeft :size="13" />
+            <span>Sebelumnya</span>
+          </button>
+          <button
+            type="button"
+            :disabled="currentPage >= totalPages"
+            @click="currentPage++"
+            class="px-2.5 py-1 rounded-md border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 transition-colors"
+          >
+            <span>Selanjutnya</span>
+            <ChevronRight :size="13" />
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Dialog: Deactivate Eselon -->
+    <ConfirmDialog
+      :is-open="isDeactivateOpen"
+      title="Nonaktifkan Eselon?"
+      :message="`Nonaktifkan ${itemToDeactivate?.kode}? Data historis tetap tersimpan.`"
+      confirm-text="Nonaktifkan"
+      cancel-text="Batal"
+      :danger="true"
+      @confirm="confirmDeactivate"
+      @cancel="isDeactivateOpen = false"
+    />
+  </div>
+</template>

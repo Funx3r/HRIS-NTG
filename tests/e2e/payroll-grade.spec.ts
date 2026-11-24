@@ -41,14 +41,14 @@ test('search filter works on kode or nama grade', async ({ page }) => {
   await expect(page.locator('table').getByText('GRADE-1')).toHaveCount(0);
 });
 
-test('tambah button opens grade development stub modal', async ({ page }) => {
+test('tambah button navigates to form page and can cancel back to list', async ({ page }) => {
   await loginAs(page, 'admin');
   await page.goto('/payroll/grade');
 
   await page.getByRole('button', { name: 'Tambah Grade' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByText('Form Tambah Grade Pegawai')).toBeVisible();
+  await expect(page).toHaveURL(/\/payroll\/grade\/tambah$/);
+  await expect(page.getByRole('heading', { name: 'Tambah Grade' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Tutup', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Batal' }).click();
+  await expect(page).toHaveURL(/\/payroll\/grade$/);
 });

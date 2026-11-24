@@ -12,7 +12,8 @@ import {
   ArrowLeftRight,
   Wallet,
   Layers,
-  Award
+  Award,
+  Network
 } from 'lucide-vue-next';
 
 const route = useRoute();
@@ -236,19 +237,27 @@ const subItemClass = (active: boolean) =>
         <div v-show="isPayrollOpen" class="pl-9 pr-2 py-1 space-y-1">
           <router-link
             to="/payroll/komponen"
-            :class="subItemClass(isActive('/payroll/komponen'))"
-            :aria-current="isActive('/payroll/komponen') ? 'page' : undefined"
+            :class="subItemClass(isSubActive('/payroll/komponen'))"
+            :aria-current="isSubActive('/payroll/komponen') ? 'page' : undefined"
           >
             <Layers :size="14" />
             <span>Komponen Gaji</span>
           </router-link>
           <router-link
             to="/payroll/grade"
-            :class="subItemClass(isActive('/payroll/grade'))"
-            :aria-current="isActive('/payroll/grade') ? 'page' : undefined"
+            :class="subItemClass(isSubActive('/payroll/grade'))"
+            :aria-current="isSubActive('/payroll/grade') ? 'page' : undefined"
           >
             <Award :size="14" />
             <span>Grade Pegawai</span>
+          </router-link>
+          <router-link
+            to="/payroll/eselon"
+            :class="subItemClass(isSubActive('/payroll/eselon'))"
+            :aria-current="isSubActive('/payroll/eselon') ? 'page' : undefined"
+          >
+            <Network :size="14" />
+            <span>Eselon / Level Jabatan</span>
           </router-link>
         </div>
       </div>

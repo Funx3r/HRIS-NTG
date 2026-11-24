@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   Award,
   PlusCircle,
@@ -7,66 +8,34 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  MoreVertical,
+  Pencil,
+  Trash2,
   Download,
-  X
 } from 'lucide-vue-next';
+import { useGradePegawaiStore } from '../../composables/useGradePegawaiStore';
+import { useToast } from '../../composables/useToast';
+import ConfirmDialog from '../../components/payroll/ConfirmDialog.vue';
+import type { GradePegawai } from '../../types/payroll';
 
-interface GradeItem {
-  kode: string;
-  nama: string;
-  urutan: number;
-  golonganAsn: string;
-  status: 'Aktif' | 'Nonaktif';
-}
-
-const rawItems: GradeItem[] = [
-  {
-    kode: 'GRADE-1',
-    nama: 'Pelaksana Pemula',
-    urutan: 1,
-    golonganAsn: 'I/a',
-    status: 'Aktif',
-  },
-  {
-    kode: 'GRADE-2',
-    nama: 'Pelaksana Terampil',
-    urutan: 2,
-    golonganAsn: 'II/a',
-    status: 'Aktif',
-  },
-  {
-    kode: 'GRADE-3',
-    nama: 'Pelaksana Mahir',
-    urutan: 3,
-    golonganAsn: 'III/a',
-    status: 'Aktif',
-  },
-  {
-    kode: 'GRADE-4',
-    nama: 'Ahli Madya',
-    urutan: 4,
-    golonganAsn: 'IV/a',
-    status: 'Aktif',
-  },
-  {
-    kode: 'GRADE-KONTRAK',
-    nama: 'Tenaga Kontrak Lapangan',
-    urutan: 5,
-    golonganAsn: '-',
-    status: 'Nonaktif',
-  },
-];
+const router = useRouter();
+const { items, loading, load, deactivate } = useGradePegawaiStore();
+const { showToast } = useToast();
 
 const searchQuery = ref('');
 const statusFilter = ref<'ALL' | 'Aktif' | 'Nonaktif'>('ALL');
 const currentPage = ref(1);
 const perPage = 10;
-const isModalOpen = ref(false);
+
+const isDeactivateOpen = ref(false);
+const itemToDeactivate = ref<GradePegawai | null>(null);
+
+onMounted(() => {
+  load();
+});
 
 const filteredList = computed(() => {
   const q = searchQuery.value.toLowerCase().trim();
-  return rawItems.filter((item) => {
+  return (items.value || []).filter((item) => {
     const matchSearch =
       !q ||
       item.kode.toLowerCase().includes(q) ||
@@ -87,8 +56,21 @@ watch([searchQuery, statusFilter], () => {
   currentPage.value = 1;
 });
 
+const openDeactivate = (item: GradePegawai) => {
+  itemToDeactivate.value = item;
+  isDeactivateOpen.value = true;
+};
+
+const confirmDeactivate = async () => {
+  if (!itemToDeactivate.value) return;
+  const kode = itemToDeactivate.value.kode;
+  await deactivate(kode);
+  isDeactivateOpen.value = false;
+  showToast(`${kode} berhasil dinonaktifkan.`, 'info');
+};
+
 const handleExport = () => {
-  alert('Data grade pegawai berhasil disiapkan untuk diunduh.');
+  showToast('Data grade pegawai berhasil disiapkan untuk diunduh.', 'info');
 };
 </script>
 
@@ -122,7 +104,7 @@ const handleExport = () => {
         </button>
         <button
           type="button"
-          @click="isModalOpen = true"
+          @click="router.push('/payroll/grade/tambah')"
           class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#0058BE] hover:bg-[#004ba3] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
         >
           <PlusCircle :size="14" />
@@ -143,7 +125,7 @@ const handleExport = () => {
             <div class="flex items-center gap-2">
               <h2 class="text-sm font-bold text-slate-800">Daftar Grade Pegawai</h2>
               <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                5 Grade Terkonfigurasi
+                {{ items.length }} Grade Terkonfigurasi
               </span>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">Hierarki level kompensasi dasar seluruh unit kerja.</p>
@@ -196,11 +178,18 @@ const handleExport = () => {
               <th class="px-5 py-3 text-center">URUTAN</th>
               <th class="px-5 py-3">GOLONGAN ASN</th>
               <th class="px-5 py-3">STATUS</th>
-              <th class="px-5 py-3 text-right">AKSI</th>
+              <th class="px-5 py-3 text-right w-24">AKSI</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
+            <tr v-if="loading">
+              <td colspan="6" class="px-5 py-8 text-center text-slate-400">
+                Memuat data grade pegawai...
+              </td>
+            </tr>
+
             <tr
+              v-else
               v-for="item in paginatedList"
               :key="item.kode"
               class="hover:bg-slate-50/80 transition-colors"
@@ -235,18 +224,32 @@ const handleExport = () => {
                   Nonaktif
                 </span>
               </td>
-              <td class="px-5 py-3.5 text-right">
-                <button
-                  type="button"
-                  class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                  aria-label="Aksi"
-                >
-                  <MoreVertical :size="15" />
-                </button>
+              <td class="px-5 py-3.5 text-right whitespace-nowrap">
+                <div class="flex items-center justify-end gap-1">
+                  <button
+                    type="button"
+                    @click="router.push(`/payroll/grade/${item.kode}/ubah`)"
+                    class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    :aria-label="`Ubah Grade Pegawai ${item.kode}`"
+                  >
+                    <Pencil :size="15" />
+                  </button>
+                  <button
+                    type="button"
+                    :disabled="item.status === 'Nonaktif'"
+                    :title="item.status === 'Nonaktif' ? 'Sudah nonaktif' : undefined"
+                    @click="openDeactivate(item)"
+                    class="p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    :class="item.status === 'Nonaktif' ? 'text-slate-300' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'"
+                    :aria-label="`Nonaktifkan Grade Pegawai ${item.kode}`"
+                  >
+                    <Trash2 :size="15" />
+                  </button>
+                </div>
               </td>
             </tr>
 
-            <tr v-if="paginatedList.length === 0">
+            <tr v-if="!loading && paginatedList.length === 0">
               <td colspan="6" class="px-5 py-8 text-center text-slate-400">
                 Tidak ada data grade yang sesuai dengan filter.
               </td>
@@ -281,43 +284,16 @@ const handleExport = () => {
       </div>
     </div>
 
-    <!-- Stub Modal: Tambah Grade -->
-    <div
-      v-if="isModalOpen"
-      role="dialog"
-      aria-modal="true"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
-    >
-      <div class="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-xl overflow-hidden p-6 space-y-4">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-          <h3 class="text-sm font-bold text-slate-800">Form Tambah Grade Pegawai</h3>
-          <button
-            type="button"
-            @click="isModalOpen = false"
-            class="text-slate-400 hover:text-slate-600 rounded-md p-1"
-            aria-label="Close"
-          >
-            <X :size="16" />
-          </button>
-        </div>
-
-        <div class="text-xs text-slate-600 space-y-2 py-2">
-          <p class="font-medium text-slate-700">Fitur form sedang dalam pengembangan (tahap setup visual).</p>
-          <p class="text-slate-500">
-            Form ini nantinya digunakan untuk menentukan level hierarki baru, relasi golongan ASN, dan batas nominal dasar gaji.
-          </p>
-        </div>
-
-        <div class="pt-2 flex justify-end">
-          <button
-            type="button"
-            @click="isModalOpen = false"
-            class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Tutup
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Confirm Dialog: Deactivate Grade -->
+    <ConfirmDialog
+      :is-open="isDeactivateOpen"
+      title="Nonaktifkan Grade Pegawai?"
+      :message="`Nonaktifkan ${itemToDeactivate?.kode}? Data historis tetap tersimpan.`"
+      confirm-text="Nonaktifkan"
+      cancel-text="Batal"
+      :danger="true"
+      @confirm="confirmDeactivate"
+      @cancel="isDeactivateOpen = false"
+    />
   </div>
 </template>
