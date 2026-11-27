@@ -112,8 +112,9 @@ const paginatedRecords = computed(() => {
 });
 
 // ── Tab Counts ──
+// Badge hanya menghitung yang MASIH menunggu persetujuan, agar angkanya turun saat disetujui.
 const tabRencanaCount = computed(() => adminRecords.value.filter(r =>
-  r.status === 'Menunggu Approval Rencana' || r.status === 'Disetujui Rencana'
+  r.status === 'Menunggu Approval Rencana'
 ).length);
 const tabRealisasiCount = computed(() => adminRecords.value.filter(r =>
   r.status === 'Menunggu Realisasi'

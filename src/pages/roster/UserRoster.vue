@@ -203,7 +203,7 @@ const isMapModalOpen = ref(false);
 const isShiftSwapModalOpen = ref(false);
 
 const handleShiftSwapSubmitted = () => {
-  triggerToast('Pengajuan tukar shift berhasil dikirim ke rekan kerja!');
+  triggerToast('Pengajuan tukar shift berhasil dikirim ke atasan untuk persetujuan!');
 };
 
 // Toast Notification

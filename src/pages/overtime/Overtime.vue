@@ -20,13 +20,11 @@ import {
   AlertCircle,
   Eye,
   Send,
-  UserCheck,
-  ArrowLeftRight
+  UserCheck
 } from 'lucide-vue-next';
 import { useAdminOvertimeStore } from '../../composables/useOvertimeStore';
 import { useAuth } from '../../composables/useAuth';
 import type { OvertimeRecord } from '../../types/overtime';
-import ModalAjukanTukarShift from '../../components/roster/ModalAjukanTukarShift.vue';
 
 const {
   adminRecords,
@@ -279,12 +277,6 @@ const openDetailModal = (rec: OvertimeRecord) => {
 // 2. SOP Modal
 const isSOPModalOpen = ref(false);
 
-// 3. Shift Swap Modal
-const isShiftSwapModalOpen = ref(false);
-const handleShiftSwapSubmitted = () => {
-  showToast('Pengajuan tukar shift berhasil dikirim ke rekan kerja!');
-};
-
 // 4. Work Report Submit Modal
 const isReportModalOpen = ref(false);
 const reportText = ref('');
@@ -406,15 +398,6 @@ const exportHistory = () => {
             </option>
           </select>
         </div>
-
-        <button
-          type="button"
-          @click="isShiftSwapModalOpen = true"
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0284c7] hover:bg-sky-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all cursor-pointer"
-        >
-          <ArrowLeftRight :size="16" />
-          <span>Ajukan Tukar Shift</span>
-        </button>
 
         <button
           type="button"
@@ -1153,11 +1136,5 @@ const exportHistory = () => {
         </div>
       </div>
     </div>
-
-    <!-- ── POPUP FORM: AJUKAN PERTUKARAN JADWAL SHIFT (SHIFT SWAP) ── -->
-    <ModalAjukanTukarShift
-      v-model="isShiftSwapModalOpen"
-      @submitted="handleShiftSwapSubmitted"
-    />
   </div>
 </template>

@@ -3,6 +3,8 @@ export interface Repository<T> {
   get(id: string): Promise<T | null>;
   create(item: T): Promise<T>;
   update(id: string, patch: Partial<T>): Promise<T>;
+  delete?(id: string): Promise<boolean>;
+  saveAll?(items: T[]): Promise<void>;
 }
 
 export interface LocalRepositoryOptions<T> {
@@ -82,6 +84,22 @@ export function createLocalRepository<T>(options: {
       items[index] = updated;
       writeStorage(items);
       return JSON.parse(JSON.stringify(updated));
+    },
+
+    async delete(id: string): Promise<boolean> {
+      const items = readStorage();
+      const targetId = id.trim().toLowerCase();
+      const index = items.findIndex((i) => idOf(i).trim().toLowerCase() === targetId);
+      if (index === -1) {
+        return false;
+      }
+      items.splice(index, 1);
+      writeStorage(items);
+      return true;
+    },
+
+    async saveAll(newItems: T[]): Promise<void> {
+      writeStorage(JSON.parse(JSON.stringify(newItems)));
     },
   };
 }

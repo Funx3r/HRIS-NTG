@@ -440,7 +440,7 @@ const handleCreateSubmit = () => {
     isModalOpen.value = false;
     activeTab.value = 'my_requests';
     showToast(
-      `Pengajuan ${newTicket.tiketId} berhasil dikirim ke rekan ${colleague.name}!`,
+      `Pengajuan ${newTicket.tiketId} berhasil dikirim ke atasan untuk persetujuan.`,
       'success'
     );
   }, 400);

@@ -1,52 +1,36 @@
 import { ref, computed, watch } from 'vue';
 import type { RosterTeam } from '../types/roster';
+import {
+  type ShiftSwapRecord,
+  STORAGE_KEY_TEAMS,
+  STORAGE_KEY_SWAPS,
+  defaultSeedSwaps,
+  rosterTeamRepository,
+  shiftSwapRepository,
+} from '../services/rosterRepositories';
 import { mockRosterTeams } from '../data/mockData';
+import { normalizeTeamPeriod } from '../utils/rosterDate';
 
-export interface ShiftSwapRecord {
-  id: string;
-  requesterId: string;
-  requesterName: string;
-  colleagueId: string;
-  colleagueName: string;
-  swapDate: string;
-  myShift: string;
-  colleagueShift: string;
-  status: 'Menunggu Approval' | 'Disetujui' | 'Ditolak';
-  colleagueApproved: boolean;
-  restValidationNotes: string;
-  reason?: string;
-  createdAt?: string;
-}
-
-const STORAGE_KEY_TEAMS = 'bmis_shared_roster_teams_v1';
-const STORAGE_KEY_SWAPS = 'bmis_shared_shift_swaps_v1';
-
-const defaultSeedSwaps: ShiftSwapRecord[] = [
-  {
-    id: 'swap-001',
-    requesterId: 'e301',
-    requesterName: 'Ahmad Fauzi',
-    colleagueId: 'e102',
-    colleagueName: 'Budi Raharjo',
-    swapDate: 'Besok',
-    myShift: 'Shift 1 (07:00 - 15:00)',
-    colleagueShift: 'Shift 2 (15:00 - 23:00)',
-    status: 'Menunggu Approval',
-    colleagueApproved: true,
-    restValidationNotes: 'Telah divalidasi tidak melanggar batas jeda istirahat 11 jam.',
-    reason: 'Kebutuhan keluarga mendesak',
-    createdAt: 'Hari ini, 09:30 WIB',
-  },
-];
+export type { ShiftSwapRecord };
 
 const loadTeams = (): RosterTeam[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TEAMS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw) as RosterTeam[];
+      return parsed.map((team) => {
+        const period = normalizeTeamPeriod(team.startDate, team.endDate);
+        return { ...team, ...period };
+      });
+    }
   } catch (err) {
     console.error('Failed to parse teams storage:', err);
   }
-  return JSON.parse(JSON.stringify(mockRosterTeams));
+  const initial = JSON.parse(JSON.stringify(mockRosterTeams)) as RosterTeam[];
+  return initial.map((team) => {
+    const period = normalizeTeamPeriod(team.startDate, team.endDate);
+    return { ...team, ...period };
+  });
 };
 
 const loadSwaps = (): ShiftSwapRecord[] => {
@@ -66,7 +50,7 @@ watch(
   teams,
   (val) => {
     try {
-      localStorage.setItem(STORAGE_KEY_TEAMS, JSON.stringify(val));
+      rosterTeamRepository.saveAll?.(val);
     } catch (e) {
       console.error(e);
     }
@@ -78,7 +62,7 @@ watch(
   swapRequests,
   (val) => {
     try {
-      localStorage.setItem(STORAGE_KEY_SWAPS, JSON.stringify(val));
+      shiftSwapRepository.saveAll?.(val);
     } catch (e) {
       console.error(e);
     }
@@ -127,6 +111,13 @@ export function useRosterStore() {
     swapRequests.value.unshift(newSwap);
   };
 
+  const setTeamStatus = (id: string, status: RosterTeam['status']) => {
+    const team = teams.value.find((t) => t.id === id);
+    if (!team) return false;
+    team.status = status;
+    return true;
+  };
+
   return {
     teams,
     activeTeams,
@@ -137,5 +128,6 @@ export function useRosterStore() {
     urgentSwap,
     approveSwap,
     addSwapRequest,
+    setTeamStatus,
   };
 }

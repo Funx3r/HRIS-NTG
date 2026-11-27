@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowLeft,
@@ -16,9 +16,19 @@ import {
   CheckCircle2,
   Info
 } from 'lucide-vue-next';
+import {
+  addDays,
+  buildRosterWeeks,
+  formatDateRange,
+  toIsoDate,
+  todayIso,
+} from '../../utils/rosterDate';
+import { useRosterStore } from '../../composables/useRosterStore';
 
 const route = useRoute();
 const router = useRouter();
+
+const { teams, setTeamStatus } = useRosterStore();
 
 // Toast State
 const toastMessage = ref('');
@@ -43,6 +53,29 @@ const currentScheduleTitle = computed(() => {
   return (route.query.team as string) || 'Jadwal Pelaksana Security 2';
 });
 
+const currentTeam = computed(() => {
+  const teamId = String(route.query.teamId || '');
+  return (
+    teams.value.find((team) => team.id === teamId) ||
+    teams.value.find((team) => team.title === currentScheduleTitle.value) ||
+    null
+  );
+});
+
+const scheduleStartDate = computed(() => {
+  if (currentTeam.value) return currentTeam.value.startDate;
+  return toIsoDate(String(route.query.startDate || '')) ?? todayIso();
+});
+
+const scheduleEndDate = computed(() => {
+  if (currentTeam.value) return currentTeam.value.endDate;
+  return toIsoDate(String(route.query.endDate || '')) ?? addDays(scheduleStartDate.value, 29);
+});
+
+const currentPeriode = computed(() =>
+  formatDateRange(scheduleStartDate.value, scheduleEndDate.value)
+);
+
 const currentGedungLantai = computed(() => {
   if (route.query.gedung) {
     const l = route.query.lantai ? `, ${route.query.lantai}` : '';
@@ -53,10 +86,6 @@ const currentGedungLantai = computed(() => {
 
 const currentDivisi = computed(() => {
   return (route.query.divisi as string) || 'Pelaksana Security';
-});
-
-const currentTanggalMulai = computed(() => {
-  return (route.query.startDate as string) || 'Oktober 2026';
 });
 
 const currentMaksimalPersonel = computed(() => {
@@ -98,80 +127,25 @@ const filteredEmployees = computed(() => {
   );
 });
 
-// Week State & Pagination (Oktober 2026)
+// Week State & Pagination (berdasarkan periode jadwal)
 const currentWeek = ref(1);
+const scheduleWeeks = computed(() =>
+  buildRosterWeeks(scheduleStartDate.value, scheduleEndDate.value)
+);
+const currentWeekDays = computed(
+  () => scheduleWeeks.value[currentWeek.value - 1]?.days ?? []
+);
+const weekDateRangeLabel = computed(
+  () => scheduleWeeks.value[currentWeek.value - 1]?.label ?? ''
+);
 
-interface WeekDay {
-  dayNum: number;
-  dayName: string;
-  isWeekend: boolean;
-}
-
-const weeksData: Record<number, { rangeLabel: string; days: WeekDay[] }> = {
-  1: {
-    rangeLabel: '1 - 7 Okt 2026',
-    days: [
-      { dayNum: 1, dayName: 'KAM', isWeekend: false },
-      { dayNum: 2, dayName: 'JUM', isWeekend: false },
-      { dayNum: 3, dayName: 'SAB', isWeekend: true },
-      { dayNum: 4, dayName: 'MIN', isWeekend: true },
-      { dayNum: 5, dayName: 'SEN', isWeekend: false },
-      { dayNum: 6, dayName: 'SEL', isWeekend: false },
-      { dayNum: 7, dayName: 'RAB', isWeekend: false },
-    ]
-  },
-  2: {
-    rangeLabel: '8 - 14 Okt 2026',
-    days: [
-      { dayNum: 8, dayName: 'KAM', isWeekend: false },
-      { dayNum: 9, dayName: 'JUM', isWeekend: false },
-      { dayNum: 10, dayName: 'SAB', isWeekend: true },
-      { dayNum: 11, dayName: 'MIN', isWeekend: true },
-      { dayNum: 12, dayName: 'SEN', isWeekend: false },
-      { dayNum: 13, dayName: 'SEL', isWeekend: false },
-      { dayNum: 14, dayName: 'RAB', isWeekend: false },
-    ]
-  },
-  3: {
-    rangeLabel: '15 - 21 Okt 2026',
-    days: [
-      { dayNum: 15, dayName: 'KAM', isWeekend: false },
-      { dayNum: 16, dayName: 'JUM', isWeekend: false },
-      { dayNum: 17, dayName: 'SAB', isWeekend: true },
-      { dayNum: 18, dayName: 'MIN', isWeekend: true },
-      { dayNum: 19, dayName: 'SEN', isWeekend: false },
-      { dayNum: 20, dayName: 'SEL', isWeekend: false },
-      { dayNum: 21, dayName: 'RAB', isWeekend: false },
-    ]
-  },
-  4: {
-    rangeLabel: '22 - 28 Okt 2026',
-    days: [
-      { dayNum: 22, dayName: 'KAM', isWeekend: false },
-      { dayNum: 23, dayName: 'JUM', isWeekend: false },
-      { dayNum: 24, dayName: 'SAB', isWeekend: true },
-      { dayNum: 25, dayName: 'MIN', isWeekend: true },
-      { dayNum: 26, dayName: 'SEN', isWeekend: false },
-      { dayNum: 27, dayName: 'SEL', isWeekend: false },
-      { dayNum: 28, dayName: 'RAB', isWeekend: false },
-    ]
-  },
-  5: {
-    rangeLabel: '29 - 31 Okt 2026',
-    days: [
-      { dayNum: 29, dayName: 'KAM', isWeekend: false },
-      { dayNum: 30, dayName: 'JUM', isWeekend: false },
-      { dayNum: 31, dayName: 'SAB', isWeekend: true },
-    ]
+watch(scheduleWeeks, (weeks) => {
+  if (currentWeek.value > weeks.length) {
+    currentWeek.value = Math.max(1, weeks.length);
   }
-};
-
-const currentWeekDays = computed(() => {
-  return weeksData[currentWeek.value]?.days || weeksData[1].days;
 });
-
-const weekDateRangeLabel = computed(() => {
-  return weeksData[currentWeek.value]?.rangeLabel || '1 - 7 Okt 2026';
+watch(() => currentTeam.value?.id, () => {
+  currentWeek.value = 1;
 });
 
 const prevWeek = () => {
@@ -181,30 +155,43 @@ const prevWeek = () => {
 };
 
 const nextWeek = () => {
-  if (currentWeek.value < 5) {
+  if (currentWeek.value < scheduleWeeks.value.length) {
     currentWeek.value++;
   }
 };
 
-// Matriks Shift State: key `${empId}_${dayNum}` => 'P' | 'S' | 'M' | 'L'
+// Matriks Shift State: key `${empId}_${date}` => 'P' | 'S' | 'M' | 'L'
 type ShiftType = 'P' | 'S' | 'M' | 'L';
 const matrixState = ref<Record<string, ShiftType>>({});
 
-// Muat state tersimpan jika ada di localStorage
+// Muat state tersimpan jika ada di localStorage dan migrasikan format lama
 onMounted(() => {
   try {
     const saved = localStorage.getItem(`bmis_matrix_${currentScheduleTitle.value}`);
-    if (saved) {
-      matrixState.value = JSON.parse(saved);
+    if (!saved) return;
+    const raw = JSON.parse(saved) as Record<string, ShiftType>;
+    const allDays = scheduleWeeks.value.flatMap((week) => week.days);
+    const migrated: Record<string, ShiftType> = {};
+    for (const [key, shift] of Object.entries(raw)) {
+      if (/^.+_\d{4}-\d{2}-\d{2}$/.test(key)) {
+        migrated[key] = shift;
+        continue;
+      }
+      const legacy = /^(.+)_(\d{1,2})$/.exec(key);
+      if (!legacy) continue;
+      const match = allDays.find((day) => day.dayNum === Number(legacy[2]));
+      if (match) migrated[`${legacy[1]}_${match.date}`] = shift;
     }
+    matrixState.value = migrated;
+    localStorage.setItem(`bmis_matrix_${currentScheduleTitle.value}`, JSON.stringify(migrated));
   } catch (err) {
     console.warn('Gagal membaca matriks tersimpan:', err);
   }
 });
 
 // Set shift manual interaktif
-const setShift = (empId: string, dayNum: number, shift: ShiftType) => {
-  const key = `${empId}_${dayNum}`;
+const setShift = (empId: string, date: string, shift: ShiftType) => {
+  const key = `${empId}_${date}`;
   if (matrixState.value[key] === shift) {
     // Klik ulang shift yang sama akan menonaktifkannya
     delete matrixState.value[key];
@@ -213,15 +200,15 @@ const setShift = (empId: string, dayNum: number, shift: ShiftType) => {
   }
 };
 
-const getShift = (empId: string, dayNum: number): ShiftType | null => {
-  return matrixState.value[`${empId}_${dayNum}`] || null;
+const getShift = (empId: string, date: string): ShiftType | null => {
+  return matrixState.value[`${empId}_${date}`] || null;
 };
 
 // Hitung total shift kerja (P, S, M) per karyawan dalam minggu aktif
 const calculateEmployeeTotal = (empId: string) => {
   let count = 0;
   currentWeekDays.value.forEach(d => {
-    const s = matrixState.value[`${empId}_${d.dayNum}`];
+    const s = matrixState.value[`${empId}_${d.date}`];
     if (s && s !== 'L') {
       count++;
     }
@@ -239,7 +226,7 @@ const filledSlotsCount = computed(() => {
   let count = 0;
   filteredEmployees.value.forEach(emp => {
     currentWeekDays.value.forEach(d => {
-      const s = matrixState.value[`${emp.id}_${d.dayNum}`];
+      const s = matrixState.value[`${emp.id}_${d.date}`];
       if (s && s !== 'L') {
         count++;
       }
@@ -258,7 +245,7 @@ const resetMatrix = () => {
   if (confirm(`Reset seluruh shift minggu ini (${weekDateRangeLabel.value})?`)) {
     currentWeekDays.value.forEach(d => {
       allPersonnel.value.forEach(p => {
-        delete matrixState.value[`${p.id}_${d.dayNum}`];
+        delete matrixState.value[`${p.id}_${d.date}`];
       });
     });
     showToast('Seluruh jadwal shift minggu ini telah direset.', 'info');
@@ -276,6 +263,7 @@ const importExcel = () => {
 const saveDraft = () => {
   try {
     localStorage.setItem(`bmis_matrix_${currentScheduleTitle.value}`, JSON.stringify(matrixState.value));
+    if (currentTeam.value) setTeamStatus(currentTeam.value.id, 'Draft');
     showToast('Jadwal kerja berhasil disimpan sebagai Draf.', 'success');
   } catch (err) {
     showToast('Gagal menyimpan draf.', 'error');
@@ -285,7 +273,9 @@ const saveDraft = () => {
 const saveAndPublish = () => {
   try {
     localStorage.setItem(`bmis_matrix_${currentScheduleTitle.value}`, JSON.stringify(matrixState.value));
+    if (currentTeam.value) setTeamStatus(currentTeam.value.id, 'Aktif');
     showToast('Jadwal berhasil disimpan dan diaktifkan! Shift resmi diterapkan ke kalender pegawai.', 'success');
+    router.push('/roster/admin');
   } catch (err) {
     showToast('Gagal mengaktifkan jadwal.', 'error');
   }
@@ -359,8 +349,8 @@ const saveAndPublish = () => {
           <span class="font-bold text-slate-800 text-[13px]">{{ currentDivisi }}</span>
         </div>
         <div>
-          <span class="text-[11px] font-medium text-slate-500 block mb-1">Tanggal Mulai</span>
-          <span class="font-bold text-slate-800 text-[13px]">{{ currentTanggalMulai }}</span>
+          <span class="text-[11px] font-medium text-slate-500 block mb-1">Periode Jadwal</span>
+          <span data-testid="schedule-period" class="font-bold text-slate-800 text-[13px]">{{ currentPeriode }}</span>
         </div>
         <div>
           <span class="text-[11px] font-medium text-slate-500 block mb-1">Maksimal Personel</span>
@@ -382,7 +372,7 @@ const saveAndPublish = () => {
               v-model="searchQuery"
               type="text"
               placeholder="Ketik nama atau NIP..."
-              class="w-full h-10 pl-9.5 pr-3 text-xs bg-white border border-slate-300 hover:border-slate-400 focus:border-[#0084CC] focus:ring-2 focus:ring-[#0084CC]/15 rounded-md focus:outline-none transition-all shadow-2xs"
+              class="w-full h-10 pl-9 pr-3 text-xs bg-white border border-slate-300 hover:border-slate-400 focus:border-[#0084CC] focus:ring-2 focus:ring-[#0084CC]/15 rounded-md focus:outline-none transition-all shadow-2xs"
             />
           </div>
         </div>
@@ -455,18 +445,20 @@ const saveAndPublish = () => {
           type="button"
           @click="prevWeek"
           :disabled="currentWeek <= 1"
+          data-testid="prev-week"
           class="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
         >
           <ChevronLeft :size="16" />
         </button>
         <div class="px-3 py-1 text-xs font-bold text-slate-700 flex items-center gap-2 select-none">
           <Calendar :size="14" class="text-[#0084CC]" />
-          <span>Minggu {{ currentWeek }} ({{ weekDateRangeLabel }})</span>
+          <span data-testid="week-label">Minggu {{ currentWeek }} ({{ weekDateRangeLabel }})</span>
         </div>
         <button
           type="button"
           @click="nextWeek"
-          :disabled="currentWeek >= 5"
+          :disabled="currentWeek >= scheduleWeeks.length"
+          data-testid="next-week"
           class="w-8 h-8 rounded-md flex items-center justify-center text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
         >
           <ChevronRight :size="16" />
@@ -503,7 +495,9 @@ const saveAndPublish = () => {
               <!-- Kolom Hari dalam Minggu Aktif -->
               <th
                 v-for="d in currentWeekDays"
-                :key="'th-' + d.dayNum"
+                :key="'th-' + d.date"
+                data-testid="day-column"
+                :data-date="d.date"
                 :class="[
                   'px-2 py-2.5 text-center border-r border-slate-200 min-w-[70px]',
                   d.isWeekend ? 'bg-[#fef3c7] text-[#b45309]' : 'bg-slate-100/90 text-slate-700'
@@ -547,7 +541,7 @@ const saveAndPublish = () => {
               <!-- Sel Tanggal dengan Grid 2x2: P, S, M, L -->
               <td
                 v-for="d in currentWeekDays"
-                :key="'cell-' + emp.id + '-' + d.dayNum"
+                :key="'cell-' + emp.id + '-' + d.date"
                 :class="[
                   'px-1.5 py-2 text-center border-r border-slate-100 align-middle',
                   d.isWeekend ? 'bg-[#fffdf7]' : ''
@@ -557,10 +551,10 @@ const saveAndPublish = () => {
                   <!-- P (Shift 1 Pagi) -->
                   <button
                     type="button"
-                    @click="setShift(emp.id, d.dayNum, 'P')"
+                    @click="setShift(emp.id, d.date, 'P')"
                     :class="[
                       'w-[22px] h-[19px] rounded text-[9.5px] font-black flex items-center justify-center transition-all cursor-pointer',
-                      getShift(emp.id, d.dayNum) === 'P'
+                      getShift(emp.id, d.date) === 'P'
                         ? 'bg-[#f59e0b] border border-[#d97706] text-white shadow-xs'
                         : 'border border-slate-200 text-slate-400 bg-white hover:border-[#f59e0b] hover:text-[#f59e0b]'
                     ]"
@@ -572,10 +566,11 @@ const saveAndPublish = () => {
                   <!-- S (Shift 2 Siang) -->
                   <button
                     type="button"
-                    @click="setShift(emp.id, d.dayNum, 'S')"
+                    @click="setShift(emp.id, d.date, 'S')"
+                    :data-testid="'shift-' + emp.id + '-' + d.date + '-S'"
                     :class="[
                       'w-[22px] h-[19px] rounded text-[9.5px] font-black flex items-center justify-center transition-all cursor-pointer',
-                      getShift(emp.id, d.dayNum) === 'S'
+                      getShift(emp.id, d.date) === 'S'
                         ? 'bg-[#0284c7] border border-[#0369a1] text-white shadow-xs'
                         : 'border border-slate-200 text-slate-400 bg-white hover:border-[#0284c7] hover:text-[#0284c7]'
                     ]"
@@ -587,10 +582,10 @@ const saveAndPublish = () => {
                   <!-- M (Shift 3 Malam) -->
                   <button
                     type="button"
-                    @click="setShift(emp.id, d.dayNum, 'M')"
+                    @click="setShift(emp.id, d.date, 'M')"
                     :class="[
                       'w-[22px] h-[19px] rounded text-[9.5px] font-black flex items-center justify-center transition-all cursor-pointer',
-                      getShift(emp.id, d.dayNum) === 'M'
+                      getShift(emp.id, d.date) === 'M'
                         ? 'bg-[#9333ea] border border-[#7e22ce] text-white shadow-xs'
                         : 'border border-slate-200 text-slate-400 bg-white hover:border-[#9333ea] hover:text-[#9333ea]'
                     ]"
@@ -602,10 +597,10 @@ const saveAndPublish = () => {
                   <!-- L (Libur Reguler) -->
                   <button
                     type="button"
-                    @click="setShift(emp.id, d.dayNum, 'L')"
+                    @click="setShift(emp.id, d.date, 'L')"
                     :class="[
                       'w-[22px] h-[19px] rounded text-[9.5px] font-black flex items-center justify-center transition-all cursor-pointer',
-                      getShift(emp.id, d.dayNum) === 'L'
+                      getShift(emp.id, d.date) === 'L'
                         ? 'bg-slate-500 border border-slate-600 text-white shadow-xs'
                         : 'border border-slate-200 text-slate-400 bg-white hover:border-slate-400 hover:text-slate-600'
                     ]"

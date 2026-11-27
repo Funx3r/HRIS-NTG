@@ -24,6 +24,7 @@ export interface RosterTeam {
   gedung: string;
   lantai: string;
   startDate: string;
+  endDate: string;
   status: 'Aktif' | 'Draft';
   personelCount: number;
   quotaMax: number;

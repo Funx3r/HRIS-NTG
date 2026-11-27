@@ -180,13 +180,23 @@ const manualForm = ref({
   notes: '',
 });
 
-const employeeOptions = computed(() => [
-  { value: null, text: '-- Pilih Karyawan --' },
-  ...allRecords.value.map((u) => ({
-    value: u.user_id,
-    text: `${u.employee_name} (${u.employee_code})`,
-  })),
-]);
+const employeeOptions = computed(() => {
+  // Satu karyawan bisa punya banyak record (satu per hari). Dropdown harus unik per user_id.
+  const seen = new Set<string>();
+  const unique = allRecords.value.filter((u) => {
+    const key = String(u.user_id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return [
+    { value: null, text: '-- Pilih Karyawan --' },
+    ...unique.map((u) => ({
+      value: u.user_id,
+      text: `${u.employee_name} (${u.employee_code})`,
+    })),
+  ];
+});
 
 const statusOptions = [
   { value: 'ON_TIME', text: 'Tepat Waktu' },

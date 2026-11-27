@@ -25,7 +25,7 @@ import { useAttendanceStore, getTodayDateStr } from '../../composables/useAttend
 
 const { currentUser } = useAuth();
 const { addNotification } = useNotifications();
-const { recordCheckIn, recordCheckOut, recordLeave, getRecordForUser, resetUserTodayAttendance } = useAttendanceStore();
+const { records, recordCheckIn, recordCheckOut, recordLeave, getRecordForUser, resetUserTodayAttendance } = useAttendanceStore();
 
 // ── 1. Jam Digital Realtime & Reset Harian ──
 const currentTime = ref('');
@@ -92,62 +92,82 @@ const updateClock = () => {
   }
 };
 
-onMounted(() => {
+// Baca record hari ini langsung dari state reaktif.
+// Sengaja tidak memakai getRecordForUser() karena fungsi itu memicu refreshRecords()
+// (menulis ulang records.value) sehingga bisa memicu loop saat dipakai di dalam watcher.
+const findTodayRecord = () => {
+  const uid = currentUser.value?.id || 'usr-employee-asep';
+  const uname = currentUser.value?.nama || 'Asep Milo';
+  const todayStr = getTodayDateStr();
+  return records.value.find(
+    (r) =>
+      (String(r.user_id) === String(uid) ||
+        (uname && r.employee_name.toLowerCase() === uname.toLowerCase())) &&
+      r.date === todayStr
+  );
+};
+
+// Terapkan status absensi hari ini ke state tampilan (idempoten).
+const syncTodayState = () => {
   resetTodayState();
+  const existing = findTodayRecord();
+
+  if (!existing) return;
+
+  if (existing.status === 'LEAVE') {
+    isLeaveActive.value = true;
+    leaveRecordInfo.value = existing;
+    historyLogs.value.unshift({
+      no: 0,
+      day: currentDate.value || 'Hari ini',
+      location: '-',
+      shift: '08:00 - 17:00 WIB',
+      actual: '— / —',
+      totalHours: '—',
+      status: 'Izin/Sakit',
+      notes: existing.notes || 'Pengajuan Izin Resmi'
+    });
+  } else if (existing.check_in) {
+    isTappedIn.value = true;
+    tapInTime.value = existing.check_in.replace(/\./g, ':') + ' WIB';
+    isLate.value = existing.status === 'LATE';
+    lateMinutes.value = existing.late_duration_minutes;
+    if (existing.check_out) {
+      isTappedOut.value = true;
+      tapOutTime.value = existing.check_out.replace(/\./g, ':') + ' WIB';
+    }
+
+    const calculatedHours = (existing.check_in && existing.check_out)
+      ? calculateWorkDuration(existing.check_in, existing.check_out)
+      : '—';
+    totalWorkHours.value = calculatedHours !== '—' ? calculatedHours : null;
+
+    // Masukkan record aktif hari ini ke paling atas riwayat tabel
+    historyLogs.value.unshift({
+      no: 0,
+      day: currentDate.value || 'Hari ini',
+      location: existing.location || `Menara 1 BTN (Radius ${userDistanceMeters.value}m)`,
+      shift: '08:00 - 17:00 WIB',
+      actual: existing.check_out
+        ? `${existing.check_in} / ${existing.check_out} WIB`
+        : `${existing.check_in} / —`,
+      totalHours: calculatedHours,
+      status: existing.status === 'LATE' ? 'Terlambat' : 'Tepat Waktu',
+      notes: existing.notes || (existing.status === 'LATE' ? `Keterlambatan ${existing.late_duration_minutes} menit` : 'Presensi Terverifikasi')
+    });
+  }
+};
+
+onMounted(() => {
   updateClock();
   timer = setInterval(updateClock, 1000);
 
   // Restore status absensi hari ini jika sudah pernah tap atau izin HARI INI
-  const uid = currentUser.value?.id || 'usr-employee-asep';
-  const uname = currentUser.value?.nama || 'Asep Milo';
-  const todayStr = getTodayDateStr();
-  const existing = getRecordForUser(uid, uname, todayStr);
-
-  if (existing && existing.date === todayStr) {
-    if (existing.status === 'LEAVE') {
-      isLeaveActive.value = true;
-      leaveRecordInfo.value = existing;
-      historyLogs.value.unshift({
-        no: 0,
-        day: currentDate.value || 'Hari ini',
-        location: '-',
-        shift: '08:00 - 17:00 WIB',
-        actual: '— / —',
-        totalHours: '—',
-        status: 'Izin/Sakit',
-        notes: existing.notes || 'Pengajuan Izin Resmi'
-      });
-    } else if (existing.check_in) {
-      isTappedIn.value = true;
-      tapInTime.value = existing.check_in.replace(/\./g, ':') + ' WIB';
-      isLate.value = existing.status === 'LATE';
-      lateMinutes.value = existing.late_duration_minutes;
-      if (existing.check_out) {
-        isTappedOut.value = true;
-        tapOutTime.value = existing.check_out.replace(/\./g, ':') + ' WIB';
-      }
-
-      const calculatedHours = (existing.check_in && existing.check_out)
-        ? calculateWorkDuration(existing.check_in, existing.check_out)
-        : '—';
-      totalWorkHours.value = calculatedHours !== '—' ? calculatedHours : null;
-
-      // Masukkan record aktif hari ini ke paling atas riwayat tabel
-      historyLogs.value.unshift({
-        no: 0,
-        day: currentDate.value || 'Hari ini',
-        location: existing.location || `Menara 1 BTN (Radius ${userDistanceMeters.value}m)`,
-        shift: '08:00 - 17:00 WIB',
-        actual: existing.check_out
-          ? `${existing.check_in} / ${existing.check_out} WIB`
-          : `${existing.check_in} / —`,
-        totalHours: calculatedHours,
-        status: existing.status === 'LATE' ? 'Terlambat' : 'Tepat Waktu',
-        notes: existing.notes || (existing.status === 'LATE' ? `Keterlambatan ${existing.late_duration_minutes} menit` : 'Presensi Terverifikasi')
-      });
-    }
-  }
+  syncTodayState();
 });
+
+// Sinkronkan tampilan saat data berubah dari tab lain (event `storage` di store).
+watch(records, syncTodayState, { deep: true });
 
 onUnmounted(() => {
   if (timer) clearInterval(timer);

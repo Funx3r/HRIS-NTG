@@ -22,8 +22,10 @@ import {
   Folder,
   AlertCircle
 } from 'lucide-vue-next';
-import { mockRosterTeams, mockOffices, mockDivisions } from '../../data/mockData';
+import { mockOffices, mockDivisions } from '../../data/mockData';
 import type { RosterTeam } from '../../types/roster';
+import { useRosterStore } from '../../composables/useRosterStore';
+import { formatDateRange } from '../../utils/rosterDate';
 
 const router = useRouter();
 
@@ -34,8 +36,8 @@ const formatTeamMemberSummary = (team: RosterTeam) => {
   return team.members.slice(0, 3).map(m => m.name).join(', ') + '...';
 };
 
-// State Kartu Tim
-const teams = ref<RosterTeam[]>([...mockRosterTeams]);
+// State Kartu Tim (dari store agar tersimpan ke localStorage)
+const { teams } = useRosterStore();
 
 // Filter & Search State
 const searchQuery = ref('');
@@ -58,6 +60,13 @@ const isLocationInvalid = computed(() => hasAttemptedSubmit.value && (!modalGedu
 const isDivisiInvalid = computed(() => hasAttemptedSubmit.value && !modalDivisi.value);
 const isStartDateInvalid = computed(() => hasAttemptedSubmit.value && !modalStartDate.value);
 const isEndDateInvalid = computed(() => hasAttemptedSubmit.value && !modalEndDate.value);
+const isDateRangeInvalid = computed(
+  () =>
+    hasAttemptedSubmit.value &&
+    !!modalStartDate.value &&
+    !!modalEndDate.value &&
+    modalEndDate.value < modalStartDate.value
+);
 const isQuotaInvalid = computed(() => {
   if (!hasAttemptedSubmit.value) return false;
   if (modalQuota.value === '' || modalQuota.value === null || modalQuota.value === undefined) return true;
@@ -72,6 +81,7 @@ const isFormInvalid = computed(() => {
     !modalDivisi.value ||
     !modalStartDate.value ||
     !modalEndDate.value ||
+    (!!modalStartDate.value && !!modalEndDate.value && modalEndDate.value < modalStartDate.value) ||
     modalQuota.value === '' ||
     modalQuota.value === null ||
     modalQuota.value === undefined ||
@@ -149,6 +159,7 @@ const handleCreateTeam = () => {
     gedung: modalGedung.value,
     lantai: modalLantai.value,
     startDate: modalStartDate.value,
+    endDate: modalEndDate.value,
     status: 'Draft',
     personelCount: 0,
     quotaMax: Number(modalQuota.value) || 1,
@@ -175,10 +186,12 @@ const goToRosterMatrix = (team: RosterTeam) => {
     name: 'AdminRoster',
     query: {
       team: team.title,
+      teamId: team.id,
       gedung: team.gedung,
       lantai: team.lantai,
       divisi: team.divisi,
       startDate: team.startDate,
+      endDate: team.endDate,
       quotaMax: team.quotaMax
     }
   });
@@ -291,6 +304,7 @@ const goToRosterMatrix = (team: RosterTeam) => {
       <div
         v-for="team in filteredTeams"
         :key="team.id"
+        data-testid="team-card"
         class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md hover:border-[#0084CC] transition-all flex flex-col justify-between gap-4 group"
       >
         <!-- Card Header -->
@@ -298,6 +312,7 @@ const goToRosterMatrix = (team: RosterTeam) => {
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2.5 min-w-0 flex-1">
               <div
+                data-testid="team-number"
                 :class="[
                   'w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm text-white shrink-0',
                   team.status === 'Aktif' ? 'bg-[#0084CC]' : 'bg-[#000000]'
@@ -319,6 +334,7 @@ const goToRosterMatrix = (team: RosterTeam) => {
             </div>
 
             <span
+              data-testid="team-status"
               :class="[
                 'text-[11px] font-semibold px-2.5 py-0.5 rounded capitalize shrink-0',
                 team.status === 'Aktif'
@@ -346,9 +362,9 @@ const goToRosterMatrix = (team: RosterTeam) => {
             </div>
             <div class="flex items-center justify-between text-slate-600">
               <span class="flex items-center gap-2 text-slate-400 font-medium">
-                <CalendarDays :size="14" class="text-slate-400" /> Tanggal Mulai
+                <CalendarDays :size="14" class="text-slate-400" /> Periode
               </span>
-              <span class="font-bold text-slate-900">{{ team.startDate }}</span>
+              <span data-testid="team-period" class="font-bold text-slate-900">{{ formatDateRange(team.startDate, team.endDate) }}</span>
             </div>
           </div>
         </div>
@@ -568,6 +584,7 @@ const goToRosterMatrix = (team: RosterTeam) => {
                     class="w-full h-10 px-3 bg-white border border-[#C6C6CD]/50 hover:border-slate-400 focus:border-[#0058BE] rounded text-xs font-normal text-[#6B7280] focus:outline-none focus:ring-1 focus:ring-[#0058BE] transition-all cursor-pointer"
                   />
                   <p v-if="isEndDateInvalid" class="text-xs text-[#DC2626] mt-1.5 font-normal">Tanggal Berakhir dipilih.</p>
+                  <p v-if="isDateRangeInvalid" class="text-xs text-[#DC2626] mt-1.5 font-normal">Tanggal selesai tidak boleh lebih awal dari tanggal mulai.</p>
                 </div>
               </div>
 
